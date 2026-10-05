@@ -65,8 +65,6 @@ class _TelaRacasState extends State<TelaRacas> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.selecionar ? 'Escolher raça' : 'Buscar raça'),
-        backgroundColor: Colors.blue,
-        foregroundColor: Colors.white,
       ),
       body: Column(
         children: [

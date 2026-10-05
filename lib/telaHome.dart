@@ -1,9 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'telaCadastro.dart';
-import 'telaRaca.dart';
-import 'traducao.dart';
+
 import 'fotoCircular.dart';
+import 'telaCadastro.dart';
+import 'telaDetalhe.dart';
+import 'telaRaca.dart';
 
 class TelaHome extends StatelessWidget {
   const TelaHome({super.key});
@@ -12,13 +13,11 @@ class TelaHome extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Meus Animais'),
-        backgroundColor: Colors.blue,
-        foregroundColor: Colors.white,
+        title: const Text('Clientes'),
         actions: [
           IconButton(
             icon: const Icon(Icons.search),
-            tooltip: 'Buscar raça',
+            tooltip: 'Consultar raça',
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const TelaRacas()),
@@ -27,16 +26,17 @@ class TelaHome extends StatelessWidget {
         ],
       ),
       body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance.collection('animais').snapshots(),
+        stream: FirebaseFirestore.instance
+            .collection('animais')
+            .orderBy('nome')
+            .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-
           if (snapshot.hasError) {
             return Center(child: Text('Erro ao carregar: ${snapshot.error}'));
           }
-
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
             return const Center(child: Text('Nenhum animal cadastrado ainda.'));
           }
@@ -44,6 +44,7 @@ class TelaHome extends StatelessWidget {
           final animais = snapshot.data!.docs;
 
           return ListView.builder(
+            padding: const EdgeInsets.symmetric(vertical: 8),
             itemCount: animais.length,
             itemBuilder: (context, index) {
               final dados = animais[index].data() as Map<String, dynamic>;
@@ -51,80 +52,47 @@ class TelaHome extends StatelessWidget {
               final nome = dados['nome'] ?? 'Sem nome';
               final raca = dados['raca'] ?? 'Raça não informada';
               final idade = dados['idade']?.toString() ?? '?';
-              final imagemUrl = dados['imagemUrl'] as String?;
+              final tutor = dados['tutor'] as String?;
 
               return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                 child: ListTile(
-                  leading: FotoCircular(url: imagemUrl),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 6,
+                  ),
+                  leading: FotoCircular(url: dados['imagemUrl'], raio: 24),
                   title: Text(
                     nome,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text(
+                    tutor != null
+                        ? '$raca • $idade anos\nTutor: $tutor'
+                        : '$raca • $idade anos',
+                  ),
+                  isThreeLine: tutor != null,
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          TelaDetalhe(id: animais[index].id, dados: dados),
                     ),
                   ),
-                  subtitle: Text('$raca • $idade anos'),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                  onTap: () {
-                    final temperamento = Traducao.temperamento(
-                      dados['temperamento'],
-                    );
-                    final vida = Traducao.vida(dados['vida']);
-                    final peso = Traducao.comUnidade(
-                      Traducao.medida(dados['peso']),
-                      'kg',
-                    );
-                    final altura = Traducao.comUnidade(
-                      Traducao.medida(dados['altura']),
-                      'cm',
-                    );
-                    final grupo = Traducao.grupo(dados['grupo']);
-                    final origem = Traducao.origem(dados['origem']);
-
-                    showModalBottomSheet(
-                      context: context,
-                      builder: (_) => Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              nome,
-                              style: const TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text('Raça: $raca'),
-                            Text('Idade: $idade anos'),
-                            if (temperamento != null)
-                              Text('Temperamento: $temperamento'),
-                            if (vida != null)
-                              Text('Expectativa de vida: $vida'),
-                            if (peso != null) Text('Peso: $peso'),
-                            if (altura != null) Text('Altura: $altura'),
-                            if (grupo != null) Text('Grupo: $grupo'),
-                            if (origem != null) Text('Origem: $origem'),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
                 ),
               );
             },
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: () => Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const TelaCadastro()),
         ),
-        child: const Icon(Icons.add),
+        icon: const Icon(Icons.add),
+        label: const Text('Novo animal'),
       ),
     );
   }
